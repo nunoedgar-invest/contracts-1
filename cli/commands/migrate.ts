@@ -32,7 +32,29 @@ let allContracts = [
   'RewardsManager',
   'DisputeManager',
   'AllocationExchange',
+  'L1GraphTokenGateway',
 ]
+
+const l2Contracts = [
+  'GraphProxyAdmin',
+  'BancorFormula',
+  'Controller',
+  'EpochManager',
+  'L2GraphToken',
+  'GraphCurationToken',
+  'ServiceRegistry',
+  'Curation',
+  'SubgraphNFTDescriptor',
+  'SubgraphNFT',
+  'GNS',
+  'Staking',
+  'RewardsManager',
+  'DisputeManager',
+  'AllocationExchange',
+  'L2GraphTokenGateway',
+]
+
+const l2ChainIds = [42161, 421611]
 
 export const migrate = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promise<void> => {
   const graphConfigPath = cliArgs.graphConfig
@@ -42,6 +64,8 @@ export const migrate = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promise<vo
 
   if (chainId == 1337) {
     allContracts = ['EthereumDIDRegistry', ...allContracts]
+  } else if (chainId in l2ChainIds) {
+    allContracts = l2Contracts
   }
 
   logger.info(`>>> Migrating contracts <<<\n`)
@@ -94,7 +118,13 @@ export const migrate = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promise<vo
 
     // Defer contract calls after deploying every contract
     if (contractConfig.calls) {
-      pendingContractCalls.push({ name, contract, calls: contractConfig.calls })
+      let calls = contractConfig.calls
+      if (chainId in l2ChainIds) {
+        calls = calls.filter((call) => !call.l1Only)
+      } else {
+        calls = calls.filter((call) => !call.l2Only)
+      }
+      pendingContractCalls.push({ name, contract, calls })
     }
   }
   logger.info('Contract deployments done! Contract calls are next')

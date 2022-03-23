@@ -27,6 +27,19 @@ contracts:
       - fn: "setContractProxy"
         id: "0x45fc200c7e4544e457d3c5709bfe0d520442c30bbcbdaede89e8d4a4bbc19247" # keccak256('GraphToken')
         contractAddress: "${{GraphToken.address}}"
+        l1Only: true
+      - fn: "setContractProxy"
+        id: "0xab3cbc97062a33e28ffeea8796389b2da16780ad5c0e0c7498be8c71c8245be0" # keccak256('L1GraphTokenGateway')
+        contractAddress: "${{L1GraphTokenGateway.address}}"
+        l1Only: true
+      - fn: "setContractProxy"
+        id: "0x047b61c5a161e049a8ed295b8cc7d6a7673d6183d5158a0639b44c278b790a83" # keccak256('L2GraphToken')
+        contractAddress: "${{L2GraphToken.address}}"
+        l2Only: true
+      - fn: "setContractProxy"
+        id: "0xb37b4190ec55c9458290f2327c463bc3f462c468c5894798f6cae32621db6f05" # keccak256('L2GraphTokenGateway')
+        contractAddress: "${{L2GraphTokenGateway.address}}"
+        l2Only: true
   ServiceRegistry:
     proxy: true
     init:
@@ -112,3 +125,17 @@ contracts:
       authority: *authority
     calls:
       - fn: "approveAll"
+  L1GraphTokenGateway:
+    proxy: true
+    init:
+      controller: "${{Controller.address}}"
+  L2GraphToken:
+    proxy: true
+    init:
+      controller: "${{Controller.address}}"
+      initialSupply: "0"
+  L2GraphTokenGateway:
+    proxy: true
+    init:
+      controller: "${{Controller.address}}"
+

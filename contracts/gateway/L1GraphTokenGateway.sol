@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../upgrades/GraphUpgradeable.sol";
 import "../arbitrum/ITokenGateway.sol";
+import "../governance/Pausable.sol";
+import "../governance/Managed.sol";
 
 /**
  * @title L1 Graph Token Gateway Contract
@@ -13,8 +15,17 @@ import "../arbitrum/ITokenGateway.sol";
  * by escrowing them and sending a message to the L2 gateway, and receives tokens from L2 by
  * releasing them from escrow. 
  */
-contract L1GraphTokenGateway is GraphUpgradeable, ITokenGateway {
+contract L1GraphTokenGateway is GraphUpgradeable, Pausable, Managed, ITokenGateway {
     using SafeMath for uint256;
+
+    /**
+     * @dev Override the default pausing from Managed to allow pausing this
+     * particular contract besides pausing from the Controller.
+     */
+    function _notPaused() internal override view {
+        require(!controller.paused(), "Paused (controller)");
+        require(!_paused, "Paused (contract)");
+    }
 
     /**
      * @notice Creates and sends a retryable ticket to transfer GRT to L2 using the Arbitrum Inbox.
@@ -36,7 +47,7 @@ contract L1GraphTokenGateway is GraphUpgradeable, ITokenGateway {
         uint256 _maxGas,
         uint256 _gasPriceBid,
         bytes calldata _data
-    ) external override payable returns (bytes memory) {
+    ) external override payable notPaused returns (bytes memory) {
         // TODO
     }
 
@@ -56,7 +67,7 @@ contract L1GraphTokenGateway is GraphUpgradeable, ITokenGateway {
         address _to,
         uint256 _amount,
         bytes calldata _data
-    ) external override payable {
+    ) external override payable notPaused {
         // TODO
     }
 

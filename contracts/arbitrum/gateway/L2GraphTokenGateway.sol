@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../upgrades/GraphUpgradeable.sol";
 import "../ITokenGateway.sol";
+import "../../governance/Pausable.sol";
+import "../../governance/Managed.sol";
 
 /**
  * @title L2 Graph Token Gateway Contract
@@ -15,8 +17,17 @@ import "../ITokenGateway.sol";
  * (See: https://github.com/OffchainLabs/arbitrum/tree/master/packages/arb-bridge-peripherals/contracts/tokenbridge
   * and https://github.com/livepeer/arbitrum-lpt-bridge)
  */
-contract L2GraphTokenGateway is GraphUpgradeable, ITokenGateway {
+contract L2GraphTokenGateway is GraphUpgradeable, Pausable, Managed, ITokenGateway {
     using SafeMath for uint256;
+
+    /**
+     * @dev Override the default pausing from Managed to allow pausing this
+     * particular contract besides pausing from the Controller.
+     */
+    function _notPaused() internal override view {
+        require(!controller.paused(), "Paused (controller)");
+        require(!_paused, "Paused (contract)");
+    }
 
     /**
      * @notice Burns L2 tokens and initiates a transfer to L1.

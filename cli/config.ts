@@ -7,12 +7,7 @@ import { CLIEnvironment } from './env'
 const ABRefMatcher = /\${{([A-Z]\w.+)}}/
 
 type ContractParam = { name: string; value: string }
-type ContractCall = {
-  fn: string
-  params: Array<ContractCallParam>
-  l1Only: boolean | undefined
-  l2Only: boolean | undefined
-}
+type ContractCall = { fn: string; params: Array<ContractCallParam> }
 type ContractCallParam = string | number
 interface ContractConfig {
   params: Array<ContractParam>
@@ -92,13 +87,8 @@ export function getContractConfig(
     if (name.startsWith('calls')) {
       for (const entry of contractConfig.calls) {
         const fn = entry['fn']
-        const l1Only = entry['l1Only']
-        const l2Only = entry['l2Only']
-        const filteredKeys = ['fn', 'l1Only', 'l2Only']
-        const params = Object.entries(entry).filter( // skip fn, l1Only and L2Only
-          ([k]) => !filteredKeys.includes(k)
-        ).map(([_, v]) => v) as Array<ContractCallParam>
-        contractCalls.push({ fn, params, l1Only, l2Only })
+        const params = Object.values(entry).slice(1) as Array<ContractCallParam> // skip fn
+        contractCalls.push({ fn, params })
       }
       continue
     }

@@ -118,13 +118,7 @@ export const migrate = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promise<vo
 
     // Defer contract calls after deploying every contract
     if (contractConfig.calls) {
-      let calls = contractConfig.calls
-      if (chainId in l2ChainIds) {
-        calls = calls.filter((call) => !call.l1Only)
-      } else {
-        calls = calls.filter((call) => !call.l2Only)
-      }
-      pendingContractCalls.push({ name, contract, calls })
+      pendingContractCalls.push({ name, contract, calls: contractConfig.calls })
     }
   }
   logger.info('Contract deployments done! Contract calls are next')

@@ -16,7 +16,7 @@ import "../../governance/Managed.sol";
  * and mints them on the L2 side. Sending GRT back to L1 by burning them on the L2 side.
  * Based on Offchain Labs' reference implementation and Livepeer's arbitrum-lpt-bridge
  * (See: https://github.com/OffchainLabs/arbitrum/tree/master/packages/arb-bridge-peripherals/contracts/tokenbridge
-  * and https://github.com/livepeer/arbitrum-lpt-bridge)
+ * and https://github.com/livepeer/arbitrum-lpt-bridge)
  */
 contract L2GraphTokenGateway is GraphUpgradeable, Pausable, Managed, L2ArbitrumMessenger, ITokenGateway {
     using SafeMath for uint256;

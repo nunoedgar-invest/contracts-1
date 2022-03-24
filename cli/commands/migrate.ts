@@ -35,22 +35,31 @@ let allContracts = [
   'L1GraphTokenGateway',
 ]
 
+// This is all we'll want to deploy to L2 eventually:
+// const l2Contracts = [
+//   'GraphProxyAdmin',
+//   'BancorFormula',
+//   'Controller',
+//   'EpochManager',
+//   'L2GraphToken',
+//   'GraphCurationToken',
+//   'ServiceRegistry',
+//   'Curation',
+//   'SubgraphNFTDescriptor',
+//   'SubgraphNFT',
+//   'GNS',
+//   'Staking',
+//   'RewardsManager',
+//   'DisputeManager',
+//   'AllocationExchange',
+//   'L2GraphTokenGateway',
+// ]
+//
+// But for now we'll only include a subset:
 const l2Contracts = [
   'GraphProxyAdmin',
-  'BancorFormula',
   'Controller',
-  'EpochManager',
   'L2GraphToken',
-  'GraphCurationToken',
-  'ServiceRegistry',
-  'Curation',
-  'SubgraphNFTDescriptor',
-  'SubgraphNFT',
-  'GNS',
-  'Staking',
-  'RewardsManager',
-  'DisputeManager',
-  'AllocationExchange',
   'L2GraphTokenGateway',
 ]
 

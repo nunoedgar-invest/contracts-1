@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../upgrades/GraphUpgradeable.sol";
 import "../arbitrum/ITokenGateway.sol";
+import "../arbitrum/L1ArbitrumMessenger.sol";
 import "../governance/Pausable.sol";
 import "../governance/Managed.sol";
 
@@ -15,7 +16,7 @@ import "../governance/Managed.sol";
  * by escrowing them and sending a message to the L2 gateway, and receives tokens from L2 by
  * releasing them from escrow. 
  */
-contract L1GraphTokenGateway is GraphUpgradeable, Pausable, Managed, ITokenGateway {
+contract L1GraphTokenGateway is GraphUpgradeable, Pausable, Managed, L1ArbitrumMessenger, ITokenGateway {
     using SafeMath for uint256;
 
     /**

@@ -5,7 +5,8 @@ pragma solidity ^0.7.6;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../upgrades/GraphUpgradeable.sol";
-import "../ITokenGateway.sol";
+import "../../arbitrum/ITokenGateway.sol";
+import "../../arbitrum/L2ArbitrumMessenger.sol";
 import "../../governance/Pausable.sol";
 import "../../governance/Managed.sol";
 
@@ -17,7 +18,7 @@ import "../../governance/Managed.sol";
  * (See: https://github.com/OffchainLabs/arbitrum/tree/master/packages/arb-bridge-peripherals/contracts/tokenbridge
   * and https://github.com/livepeer/arbitrum-lpt-bridge)
  */
-contract L2GraphTokenGateway is GraphUpgradeable, Pausable, Managed, ITokenGateway {
+contract L2GraphTokenGateway is GraphUpgradeable, Pausable, Managed, L2ArbitrumMessenger, ITokenGateway {
     using SafeMath for uint256;
 
     /**

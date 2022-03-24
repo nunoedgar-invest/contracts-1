@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../upgrades/GraphUpgradeable.sol";
 import "../../token/GraphToken.sol";
-import "../IArbToken.sol";
+import "../../arbitrum/IArbToken.sol";
 
 /**
  * @title L2 Graph Token Contract

@@ -24,7 +24,6 @@ import "../governance/Managed.sol";
 contract L1GraphTokenGateway is GraphUpgradeable, Pausable, Managed, L1ArbitrumMessenger, ITokenGateway, ReentrancyGuardUpgradeable {
     using SafeMath for uint256;
 
-    // TODO add functions to properly manage all these
     address public l2GRT;
     address public inbox;
     address public l1Router;
@@ -45,6 +44,10 @@ contract L1GraphTokenGateway is GraphUpgradeable, Pausable, Managed, L1ArbitrumM
         uint256 indexed _exitNum,
         uint256 _amount
     );
+
+    event ArbitrumAddressesSet(address _inbox, address _l1Router);
+    event L2TokenAddressSet(address _l2GRT);
+    event L2CounterpartAddressSet(address _l2Counterpart);
 
     /**
      * @dev Allows a function to be called only by the gateway's L2 counterpart.
@@ -77,6 +80,22 @@ contract L1GraphTokenGateway is GraphUpgradeable, Pausable, Managed, L1ArbitrumM
         Managed._initialize(_controller);
         __ReentrancyGuard_init();
         _paused = true;
+    }
+
+    function setArbitrumAddresses(address _inbox, address _l1Router) external onlyGovernor {
+        inbox = _inbox;
+        l1Router = _l1Router;
+        emit ArbitrumAddressesSet(_inbox, _l1Router);
+    }
+
+    function setL2TokenAddress(address _l2GRT) external onlyGovernor {
+        l2GRT = _l2GRT;
+        emit L2TokenAddressSet(_l2GRT);
+    }
+
+    function setL2CounterpartAddress(address _l2Counterpart) external onlyGovernor {
+        l2Counterpart = _l2Counterpart;
+        emit L2CounterpartAddressSet(_l2Counterpart);
     }
 
     /**

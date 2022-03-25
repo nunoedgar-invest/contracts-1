@@ -4,6 +4,7 @@ pragma solidity ^0.7.6;
 pragma abicoder v2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "../upgrades/GraphUpgradeable.sol";
 import "../arbitrum/ITokenGateway.sol";
@@ -20,7 +21,7 @@ import "../governance/Managed.sol";
  * (See: https://github.com/OffchainLabs/arbitrum/tree/master/packages/arb-bridge-peripherals/contracts/tokenbridge
  * and https://github.com/livepeer/arbitrum-lpt-bridge)
  */
-contract L1GraphTokenGateway is GraphUpgradeable, Pausable, Managed, L1ArbitrumMessenger, ITokenGateway {
+contract L1GraphTokenGateway is GraphUpgradeable, Pausable, Managed, L1ArbitrumMessenger, ITokenGateway, ReentrancyGuard {
     using SafeMath for uint256;
 
     // TODO add functions to properly manage all these
@@ -47,6 +48,21 @@ contract L1GraphTokenGateway is GraphUpgradeable, Pausable, Managed, L1ArbitrumM
     );
 
     /**
+     * @dev Allows a function to be called only by the gateway's L2 counterpart.
+     */
+    modifier onlyL2Counterpart() {
+        // a message coming from the counterpart gateway was executed by the bridge
+        address bridge = IInbox(inbox).bridge();
+        require(msg.sender == bridge, "NOT_FROM_BRIDGE");
+
+        // and the outbox reports that the L2 address of the sender is the counterpart gateway
+        address l2ToL1Sender = IOutbox(IBridge(bridge).activeOutbox())
+            .l2ToL1Sender();
+        require(l2ToL1Sender == l2Counterpart, "ONLY_COUNTERPART_GATEWAY");
+        _;
+    }
+
+    /**
      * @dev Override the default pausing from Managed to allow pausing this
      * particular contract besides pausing from the Controller.
      */
@@ -54,6 +70,8 @@ contract L1GraphTokenGateway is GraphUpgradeable, Pausable, Managed, L1ArbitrumM
         require(!controller.paused(), "Paused (controller)");
         require(!_paused, "Paused (contract)");
     }
+
+    constructor() ReentrancyGuard() {}
 
     /**
      * @notice Creates and sends a retryable ticket to transfer GRT to L2 using the Arbitrum Inbox.
@@ -138,13 +156,22 @@ contract L1GraphTokenGateway is GraphUpgradeable, Pausable, Managed, L1ArbitrumM
         address _to,
         uint256 _amount,
         bytes calldata _data
-    ) external override payable notPaused {
-        // TODO
+    ) external override payable notPaused nonReentrant onlyL2Counterpart {
+        require(_l1Token == l1GRT, "TOKEN_NOT_GRT");
+        (uint256 exitNum, ) = abi.decode(_data, (uint256, bytes));
+
+        uint256 escrowBalance = IGraphToken(_l1Token).balanceOf(address(this));
+        // If the bridge doesn't have enough tokens, something's very wrong!
+        require(_amount <= escrowBalance, "BRIDGE_OUT_OF_FUNDS");
+        IGraphToken(_l1Token).transferFrom(address(this), _to, _amount);
+
+        emit WithdrawalFinalized(l1Token, from, to, exitNum, amount);
     }
 
     /**
      * @notice decodes calldata required for migration of tokens
-     * @dev data must include maxSubmissionCost, extraData can be left empty
+     * @dev data must include maxSubmissionCost, extraData can be left empty. When the router
+     * sends an outbound message, data also contains the from address.
      * @param data encoded callhook data
      * @return from sender of the tx
      * @return maxSubmissionCost base ether value required to keep retyrable ticket alive

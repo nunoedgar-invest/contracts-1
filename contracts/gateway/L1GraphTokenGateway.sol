@@ -25,7 +25,6 @@ contract L1GraphTokenGateway is GraphUpgradeable, Pausable, Managed, L1ArbitrumM
     using SafeMath for uint256;
 
     // TODO add functions to properly manage all these
-    address public l1GRT;
     address public l2GRT;
     address public inbox;
     address public l1Router;
@@ -52,11 +51,11 @@ contract L1GraphTokenGateway is GraphUpgradeable, Pausable, Managed, L1ArbitrumM
      */
     modifier onlyL2Counterpart() {
         // a message coming from the counterpart gateway was executed by the bridge
-        address bridge = IInbox(inbox).bridge();
-        require(msg.sender == bridge, "NOT_FROM_BRIDGE");
+        IBridge bridge = IInbox(inbox).bridge();
+        require(msg.sender == address(bridge), "NOT_FROM_BRIDGE");
 
         // and the outbox reports that the L2 address of the sender is the counterpart gateway
-        address l2ToL1Sender = IOutbox(IBridge(bridge).activeOutbox())
+        address l2ToL1Sender = IOutbox(bridge.activeOutbox())
             .l2ToL1Sender();
         require(l2ToL1Sender == l2Counterpart, "ONLY_COUNTERPART_GATEWAY");
         _;
@@ -71,7 +70,12 @@ contract L1GraphTokenGateway is GraphUpgradeable, Pausable, Managed, L1ArbitrumM
         require(!_paused, "Paused (contract)");
     }
 
-    constructor() ReentrancyGuard() {}
+    /**
+     * @dev Initialize the gateway as paused, must be unpaused after the deploy
+     */
+    constructor() ReentrancyGuard() {
+        _paused = true;
+    }
 
     /**
      * @notice Creates and sends a retryable ticket to transfer GRT to L2 using the Arbitrum Inbox.
@@ -94,46 +98,51 @@ contract L1GraphTokenGateway is GraphUpgradeable, Pausable, Managed, L1ArbitrumM
         uint256 _gasPriceBid,
         bytes calldata _data
     ) external override payable notPaused returns (bytes memory) {
-        require(_l1Token == l1GRT, "TOKEN_NOT_GRT");
+        IGraphToken token = graphToken();
+        require(_l1Token == address(token), "TOKEN_NOT_GRT");
         require(_amount > 0, "INVALID_ZERO_AMOUNT");
 
-        // nested scope to avoid stack too deep errors
+        // nested scopes to avoid stack too deep errors
         address from;
         uint256 seqNum;
         {
-            bytes memory extraData;
-
             uint256 maxSubmissionCost;
-            (from, maxSubmissionCost, extraData) = parseOutboundData(_data);
-            require(extraData.length == 0, "CALL_HOOK_DATA_NOT_ALLOWED");
+            bytes memory outboundCalldata;
+            {
+                bytes memory extraData;
+                (from, maxSubmissionCost, extraData) = parseOutboundData(_data);
+                require(extraData.length == 0, "CALL_HOOK_DATA_NOT_ALLOWED");
+                require(maxSubmissionCost > 0, "NO_SUBMISSION_COST");
 
-            // makes sure only sufficient ETH is supplied required for successful redemption on L2
-            // if a user does not desire immediate redemption they should provide
-            // a msg.value of AT LEAST maxSubmissionCost
-            uint256 expectedEth = maxSubmissionCost + (_maxGas * _gasPriceBid);
-            require(maxSubmissionCost > 0, "NO_SUBMISSION_COST");
-            require(msg.value == expectedEth, "WRONG_ETH_VALUE");
-
-            // transfer tokens to escrow
-            IGraphToken(_l1Token).transferFrom(from, address(this), _amount);
-
-            bytes memory outboundCalldata = getOutboundCalldata(
-                _l1Token,
-                from,
-                _to,
-                _amount,
-                extraData
-            );
-            L2GasParams memory gasParams = L2GasParams(maxSubmissionCost, _maxGas, _gasPriceBid);
-            seqNum = sendTxToL2(
-                inbox,
-                l2Counterpart,
-                from,
-                msg.value,
-                0,
-                gasParams,
-                outboundCalldata
-            );
+                {
+                    // makes sure only sufficient ETH is supplied required for successful redemption on L2
+                    // if a user does not desire immediate redemption they should provide
+                    // a msg.value of AT LEAST maxSubmissionCost
+                    uint256 expectedEth = maxSubmissionCost + (_maxGas * _gasPriceBid);
+                    require(msg.value == expectedEth, "WRONG_ETH_VALUE");
+                }
+                outboundCalldata = getOutboundCalldata(
+                    _l1Token,
+                    from,
+                    _to,
+                    _amount,
+                    extraData
+                );
+            }
+            {
+                L2GasParams memory gasParams = L2GasParams(maxSubmissionCost, _maxGas, _gasPriceBid);
+                // transfer tokens to escrow
+                token.transferFrom(from, address(this), _amount);
+                seqNum = sendTxToL2(
+                    inbox,
+                    l2Counterpart,
+                    from,
+                    msg.value,
+                    0,
+                    gasParams,
+                    outboundCalldata
+                );
+            }
         }
         emit DepositInitiated(_l1Token, from, _to, seqNum, _amount);
 
@@ -157,15 +166,16 @@ contract L1GraphTokenGateway is GraphUpgradeable, Pausable, Managed, L1ArbitrumM
         uint256 _amount,
         bytes calldata _data
     ) external override payable notPaused nonReentrant onlyL2Counterpart {
-        require(_l1Token == l1GRT, "TOKEN_NOT_GRT");
+        IGraphToken token = graphToken();
+        require(_l1Token == address(token), "TOKEN_NOT_GRT");
         (uint256 exitNum, ) = abi.decode(_data, (uint256, bytes));
 
-        uint256 escrowBalance = IGraphToken(_l1Token).balanceOf(address(this));
+        uint256 escrowBalance = token.balanceOf(address(this));
         // If the bridge doesn't have enough tokens, something's very wrong!
         require(_amount <= escrowBalance, "BRIDGE_OUT_OF_FUNDS");
-        IGraphToken(_l1Token).transferFrom(address(this), _to, _amount);
+        token.transferFrom(address(this), _to, _amount);
 
-        emit WithdrawalFinalized(l1Token, from, to, exitNum, amount);
+        emit WithdrawalFinalized(_l1Token, _from, _to, exitNum, _amount);
     }
 
     /**
@@ -231,7 +241,8 @@ contract L1GraphTokenGateway is GraphUpgradeable, Pausable, Managed, L1ArbitrumM
      * @return L2 address of the bridged GRT token
      */
     function calculateL2TokenAddress(address l1ERC20) external override view returns (address) {
-        if (l1ERC20 != l1GRT) {
+        IGraphToken token = graphToken();
+        if (l1ERC20 != address(token)) {
             return address(0);
         }
         return l2GRT;

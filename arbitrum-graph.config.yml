@@ -42,7 +42,6 @@ contracts:
   L2GraphToken:
     proxy: true
     init:
-      controller: "${{Controller.address}}"
       initialSupply: "0"
   Curation:
     proxy: true
@@ -117,4 +116,4 @@ contracts:
   L2GraphTokenGateway:
     proxy: true
     init:
-      initialSupply: "0"
+      controller: "${{Controller.address}}"

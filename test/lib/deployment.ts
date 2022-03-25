@@ -21,6 +21,7 @@ import { GDAI } from '../../build/types/GDAI'
 import { GSRManager } from '../../build/types/GSRManager'
 import { GraphGovernance } from '../../build/types/GraphGovernance'
 import { SubgraphNFT } from '../../build/types/SubgraphNFT'
+import { L1GraphTokenGateway } from '../../build/types/L1GraphTokenGateway'
 
 // Disable logging for tests
 logger.pause()
@@ -267,4 +268,17 @@ export async function deployGraphGovernance(
     [governor],
     deployer,
   ) as unknown as GraphGovernance
+}
+
+export async function deployL1GraphTokenGateway(
+  deployer: Signer,
+  controller: string,
+  proxyAdmin: GraphProxyAdmin,
+): Promise<L1GraphTokenGateway> {
+  return network.deployContractWithProxy(
+    proxyAdmin,
+    'L1GraphTokenGateway',
+    [controller],
+    deployer,
+  ) as unknown as L1GraphTokenGateway
 }

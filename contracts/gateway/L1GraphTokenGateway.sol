@@ -4,7 +4,7 @@ pragma solidity ^0.7.6;
 pragma abicoder v2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
 import "../upgrades/GraphUpgradeable.sol";
 import "../arbitrum/ITokenGateway.sol";
@@ -21,7 +21,7 @@ import "../governance/Managed.sol";
  * (See: https://github.com/OffchainLabs/arbitrum/tree/master/packages/arb-bridge-peripherals/contracts/tokenbridge
  * and https://github.com/livepeer/arbitrum-lpt-bridge)
  */
-contract L1GraphTokenGateway is GraphUpgradeable, Pausable, Managed, L1ArbitrumMessenger, ITokenGateway, ReentrancyGuard {
+contract L1GraphTokenGateway is GraphUpgradeable, Pausable, Managed, L1ArbitrumMessenger, ITokenGateway, ReentrancyGuardUpgradeable {
     using SafeMath for uint256;
 
     // TODO add functions to properly manage all these
@@ -71,9 +71,11 @@ contract L1GraphTokenGateway is GraphUpgradeable, Pausable, Managed, L1ArbitrumM
     }
 
     /**
-     * @dev Initialize the gateway as paused, must be unpaused after the deploy
+     * @dev Initialize this contract.
      */
-    constructor() ReentrancyGuard() {
+    function initialize(address _controller) external onlyImpl {
+        Managed._initialize(_controller);
+        __ReentrancyGuard_init();
         _paused = true;
     }
 

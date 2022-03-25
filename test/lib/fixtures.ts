@@ -55,6 +55,12 @@ export class NetworkFixture {
       proxyAdmin,
     )
 
+    const l1GraphTokenGateway = await deployment.deployL1GraphTokenGateway(
+      deployer,
+      controller.address,
+      proxyAdmin,
+    )
+
     // Setup controller
     await controller.setContractProxy(utils.id('EpochManager'), epochManager.address)
     await controller.setContractProxy(utils.id('GraphToken'), grt.address)
@@ -63,6 +69,7 @@ export class NetworkFixture {
     await controller.setContractProxy(utils.id('DisputeManager'), staking.address)
     await controller.setContractProxy(utils.id('RewardsManager'), rewardsManager.address)
     await controller.setContractProxy(utils.id('ServiceRegistry'), serviceRegistry.address)
+    await controller.setContractProxy(utils.id('GraphTokenGateway'), l1GraphTokenGateway.address)
 
     // Setup contracts
     await curation.connect(deployer).syncAllContracts()
@@ -90,6 +97,7 @@ export class NetworkFixture {
       rewardsManager,
       serviceRegistry,
       proxyAdmin,
+      l1GraphTokenGateway,
     }
   }
 

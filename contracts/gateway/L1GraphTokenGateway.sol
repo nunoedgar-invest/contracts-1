@@ -4,13 +4,9 @@ pragma solidity ^0.7.6;
 pragma abicoder v2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
-import "../upgrades/GraphUpgradeable.sol";
-import "../arbitrum/ITokenGateway.sol";
 import "../arbitrum/L1ArbitrumMessenger.sol";
-import "../governance/Pausable.sol";
-import "../governance/Managed.sol";
+import "./GraphTokenGateway.sol";
 
 /**
  * @title L1 Graph Token Gateway Contract
@@ -21,7 +17,7 @@ import "../governance/Managed.sol";
  * (See: https://github.com/OffchainLabs/arbitrum/tree/master/packages/arb-bridge-peripherals/contracts/tokenbridge
  * and https://github.com/livepeer/arbitrum-lpt-bridge)
  */
-contract L1GraphTokenGateway is GraphUpgradeable, Pausable, Managed, L1ArbitrumMessenger, ITokenGateway, ReentrancyGuardUpgradeable {
+contract L1GraphTokenGateway is GraphTokenGateway, L1ArbitrumMessenger {
     using SafeMath for uint256;
 
     address public l2GRT;
@@ -62,15 +58,6 @@ contract L1GraphTokenGateway is GraphUpgradeable, Pausable, Managed, L1ArbitrumM
             .l2ToL1Sender();
         require(l2ToL1Sender == l2Counterpart, "ONLY_COUNTERPART_GATEWAY");
         _;
-    }
-
-    /**
-     * @dev Override the default pausing from Managed to allow pausing this
-     * particular contract besides pausing from the Controller.
-     */
-    function _notPaused() internal override view {
-        require(!controller.paused(), "Paused (controller)");
-        require(!_paused, "Paused (contract)");
     }
 
     /**
@@ -118,7 +105,7 @@ contract L1GraphTokenGateway is GraphUpgradeable, Pausable, Managed, L1ArbitrumM
         uint256 _maxGas,
         uint256 _gasPriceBid,
         bytes calldata _data
-    ) external override payable notPaused returns (bytes memory) {
+    ) external override payable notPaused nonReentrant returns (bytes memory) {
         IGraphToken token = graphToken();
         require(_l1Token == address(token), "TOKEN_NOT_GRT");
         require(_amount > 0, "INVALID_ZERO_AMOUNT");

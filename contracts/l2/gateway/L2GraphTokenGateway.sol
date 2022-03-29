@@ -19,6 +19,10 @@ import "../token/L2GraphToken.sol";
 contract L2GraphTokenGateway is GraphTokenGateway, L2ArbitrumMessenger {
     using SafeMath for uint256;
 
+    // Offset applied by the bridge to L1 addresses sending messages to L2
+    uint160 internal constant L2_ADDRESS_OFFSET =
+        uint160(0x1111000000000000000000000000000000001111);
+
     address public l1GRT;
     address public l1Counterpart;
     address public l2Router;
@@ -48,8 +52,16 @@ contract L2GraphTokenGateway is GraphTokenGateway, L2ArbitrumMessenger {
     event L1TokenAddressSet(address _l1GRT);
     event L1CounterpartAddressSet(address _l1Counterpart);
 
+    modifier onlyL1Counterpart() {
+        require(
+            msg.sender == L1ToL2Alias(l1Counterpart),
+            "ONLY_COUNTERPART_GATEWAY"
+        );
+        _;
+    }
+
     function setL2Router(address _l2Router) external onlyGovernor {
-        l1Router = _l2Router;
+        l2Router = _l2Router;
         emit L2RouterSet(_l2Router);
     }
 
@@ -143,8 +155,12 @@ contract L2GraphTokenGateway is GraphTokenGateway, L2ArbitrumMessenger {
         address _to,
         uint256 _amount,
         bytes calldata _data
-    ) external override payable {
-        // TODO
+    ) external override payable onlyL1Counterpart {
+        require(_l1Token == l1GRT, "TOKEN_NOT_GRT");
+
+        L2GraphToken(this.calculateL2TokenAddress(l1GRT)).bridgeMint(_to, _amount);
+
+        emit DepositFinalized(_l1Token, _from, _to, _amount);
     }
 
     /**
@@ -200,5 +216,20 @@ contract L2GraphTokenGateway is GraphTokenGateway, L2ArbitrumMessenger {
             from = msg.sender;
             extraData = data;
         }
+    }
+
+    /**
+     * @notice Converts L1 address to its L2 alias used when sending messages
+     * @dev The Arbitrum bridge adds an offset to addresses when sending messages,
+     * so we need to apply it to check any L1 address from a message in L2
+     * @param _l1Address The L1 address
+     * @return _l2Address the L2 alias of _l1Address
+     */
+    function L1ToL2Alias(address _l1Address)
+        internal
+        pure
+        returns (address _l2Address)
+    {
+        _l2Address = address(uint160(_l1Address) + L2_ADDRESS_OFFSET);
     }
 }

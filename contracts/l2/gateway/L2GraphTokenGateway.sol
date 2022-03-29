@@ -101,6 +101,7 @@ contract L2GraphTokenGateway is GraphTokenGateway, L2ArbitrumMessenger {
      * and will require an Outbox.executeTransaction to finalize.
      * @dev no additional callhook data is allowed. The two unused params are needed
      * for compatibility with Arbitrum's gateway router.
+     * The function is payable for ITokenGateway compatibility, but msg.value must be zero.
      * @param _l1Token L1 Address of GRT
      * @param _to Recipient address on L1
      * @param _amount Amount of tokens to burn
@@ -117,6 +118,7 @@ contract L2GraphTokenGateway is GraphTokenGateway, L2ArbitrumMessenger {
     ) external override payable notPaused returns (bytes memory) {
         require(_l1Token == l1GRT, "TOKEN_NOT_GRT");
         require(_amount > 0, "INVALID_ZERO_AMOUNT");
+        require(msg.value == 0, "INVALID_NONZERO_VALUE");
 
         OutboundCalldata memory s;
 
@@ -142,21 +144,22 @@ contract L2GraphTokenGateway is GraphTokenGateway, L2ArbitrumMessenger {
     /**
      * @notice Receives token amount from L1 and mints the equivalent tokens to the receiving address
      * @dev Only accepts transactions from the L1 GRT Gateway
-     * data param is unused because no additional data is allowed from L1
+     * data param is unused because no additional data is allowed from L1.
+     * The function is payable for ITokenGateway compatibility, but msg.value must be zero.
      * @param _l1Token L1 Address of GRT
      * @param _from Address of the sender on L1
      * @param _to Recipient address on L2
      * @param _amount Amount of tokens transferred
-     * @param _data Additional message data, unused
      */
     function finalizeInboundTransfer(
         address _l1Token,
         address _from,
         address _to,
         uint256 _amount,
-        bytes calldata _data
+        bytes calldata // _data unused in L2
     ) external override payable onlyL1Counterpart {
         require(_l1Token == l1GRT, "TOKEN_NOT_GRT");
+        require(msg.value == 0, "INVALID_NONZERO_VALUE");
 
         L2GraphToken(this.calculateL2TokenAddress(l1GRT)).bridgeMint(_to, _amount);
 

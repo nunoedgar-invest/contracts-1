@@ -25,6 +25,10 @@ describe('L1GraphTokenGateway', () => {
   let governor: Account
   let tokenSender: Account
   let l2Receiver: Account
+  let mockInbox: Account
+  let mockRouter: Account
+  let mockL2GRT: Account
+  let mockL2Router: Account
   let fixture: NetworkFixture
 
   let grt: GraphToken
@@ -48,7 +52,7 @@ describe('L1GraphTokenGateway', () => {
     );
 
   before(async function () {
-    ;[me, governor, tokenSender, l2Receiver] = await getAccounts()
+    ;[me, governor, tokenSender, l2Receiver, mockInbox, mockRouter, mockL2GRT, mockL2Router] = await getAccounts()
 
     fixture = new NetworkFixture()
     ;({ grt, l1GraphTokenGateway } = await fixture.load(governor.signer))
@@ -90,5 +94,77 @@ describe('L1GraphTokenGateway', () => {
       })
     })
 
+    describe('finalizeInboundTransfer', function () {
+      it('revert because it is paused', async function () {
+        const tx = l1GraphTokenGateway.connect(tokenSender.signer).finalizeInboundTransfer(
+          grt.address,
+          l2Receiver.address,
+          tokenSender.address,
+          toGRT('10'),
+          defaultData
+        )
+        await expect(tx).revertedWith('Paused (contract)')
+      })
+    })
+
+    describe('setArbitrumAddresses', function () {
+      it('is not callable by addreses that are not the governor', async function () {
+        const tx = l1GraphTokenGateway.connect(tokenSender.signer).setArbitrumAddresses(
+          mockInbox.address,
+          mockRouter.address
+        )
+        await expect(tx).revertedWith('Caller must be Controller governor')
+      })
+      it('sets inbox and router address', async function () {
+        const tx = l1GraphTokenGateway.connect(governor.signer).setArbitrumAddresses(
+          mockInbox.address,
+          mockRouter.address
+        )
+        await expect(tx).emit(l1GraphTokenGateway, 'ArbitrumAddressesSet')
+          .withArgs(mockInbox.address, mockRouter.address)
+        expect(await l1GraphTokenGateway.l1Router()).eq(mockRouter.address)
+        expect(await l1GraphTokenGateway.inbox()).eq(mockInbox.address)
+      })
+    })
+
+    describe('setL2TokenAddress', function () {
+      it('is not callable by addreses that are not the governor', async function () {
+        const tx = l1GraphTokenGateway.connect(tokenSender.signer).setL2TokenAddress(
+          mockL2GRT.address
+        )
+        await expect(tx).revertedWith('Caller must be Controller governor')
+      })
+      it('sets l2GRT', async function () {
+        const tx = l1GraphTokenGateway.connect(governor.signer).setL2TokenAddress(
+          mockL2GRT.address
+        )
+        await expect(tx).emit(l1GraphTokenGateway, 'L2TokenAddressSet')
+          .withArgs(mockL2GRT.address)
+        expect(await l1GraphTokenGateway.l2GRT()).eq(mockL2GRT.address)
+      })
+    })
+
+    describe('setL2CounterpartAddress', function () {
+      it('is not callable by addreses that are not the governor', async function () {
+        const tx = l1GraphTokenGateway.connect(tokenSender.signer).setL2CounterpartAddress(
+          mockL2Router.address
+        )
+        await expect(tx).revertedWith('Caller must be Controller governor')
+      })
+      it('sets L2Counterpart', async function () {
+        const tx = l1GraphTokenGateway.connect(governor.signer).setL2CounterpartAddress(
+          mockL2Router.address
+        )
+        await expect(tx).emit(l1GraphTokenGateway, 'L2CounterpartAddressSet')
+          .withArgs(mockL2Router.address)
+        expect(await l1GraphTokenGateway.l2Counterpart()).eq(mockL2Router.address)
+      })
+    })
+  })
+
+  context('> after configuring and unpausing', function () {
+    before(async function () {
+      
+    })
   })
 })

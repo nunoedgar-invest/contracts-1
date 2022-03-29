@@ -41,7 +41,7 @@ contract GraphTokenUpgradeable is GraphUpgradeable, Governed, ERC20Upgradeable, 
     bytes32 private constant DOMAIN_NAME_HASH = keccak256("Graph Token");
     bytes32 private constant DOMAIN_VERSION_HASH = keccak256("0");
     bytes32 private constant DOMAIN_SALT =
-        0x51f3d585afe6dfeb2af01bba0889a36c1db03beec88c6a4d0c53817069026afa; // Randomly generated salt
+        0xe33842a7acd1d5a1d28f25a931703e5605152dc48d64dc4716efdae1f5659591; // Randomly generated salt
     bytes32 private constant PERMIT_TYPEHASH =
         keccak256(
             "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"

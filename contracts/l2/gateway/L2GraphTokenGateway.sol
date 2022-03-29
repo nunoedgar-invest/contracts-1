@@ -19,7 +19,6 @@ import "../token/L2GraphToken.sol";
 contract L2GraphTokenGateway is GraphTokenGateway, L2ArbitrumMessenger {
     using SafeMath for uint256;
 
-    // TODO need functions to set these
     address public l1GRT;
     address public l1Counterpart;
     address public l2Router;
@@ -44,6 +43,25 @@ contract L2GraphTokenGateway is GraphTokenGateway, L2ArbitrumMessenger {
         uint256 _exitNum,
         uint256 _amount
     );
+
+    event L2RouterSet(address _l2Router);
+    event L1TokenAddressSet(address _l1GRT);
+    event L1CounterpartAddressSet(address _l1Counterpart);
+
+    function setL2Router(address _l2Router) external onlyGovernor {
+        l1Router = _l2Router;
+        emit L2RouterSet(_l2Router);
+    }
+
+    function setL1TokenAddress(address _l1GRT) external onlyGovernor {
+        l1GRT = _l1GRT;
+        emit L1TokenAddressSet(_l1GRT);
+    }
+
+    function setL1CounterpartAddress(address _l1Counterpart) external onlyGovernor {
+        l1Counterpart = _l1Counterpart;
+        emit L1CounterpartAddressSet(_l1Counterpart);
+    }
 
     /**
      * @notice Burns L2 tokens and initiates a transfer to L1.

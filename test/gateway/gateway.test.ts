@@ -2,9 +2,11 @@ import { expect } from 'chai'
 import { constants, utils } from 'ethers'
 
 import { GraphToken } from '../../build/types/GraphToken'
+import { BridgeMock } from '../../build/types/BridgeMock'
 import { L1GraphTokenGateway } from '../../build/types/L1GraphTokenGateway'
 
 import { NetworkFixture } from '../lib/fixtures'
+import { deployContract } from '../lib/deployment'
 
 import {
   advanceBlockTo,
@@ -33,6 +35,7 @@ describe('L1GraphTokenGateway', () => {
 
   let grt: GraphToken
   let l1GraphTokenGateway: L1GraphTokenGateway
+  let bridgeMock: BridgeMock
 
   const senderTokens = toGRT('1000')
   const maxGas = toBN('1000000')
@@ -164,7 +167,10 @@ describe('L1GraphTokenGateway', () => {
 
   context('> after configuring and unpausing', function () {
     before(async function () {
-      
+      bridgeMock = (await deployContract(
+        'BridgeMock',
+        governor.signer,
+      )) as unknown as BridgeMock
     })
   })
 })

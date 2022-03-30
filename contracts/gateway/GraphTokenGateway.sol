@@ -16,11 +16,29 @@ import "../governance/Managed.sol";
 abstract contract GraphTokenGateway is GraphUpgradeable, Pausable, Managed, ITokenGateway, ReentrancyGuardUpgradeable {
 
     /**
+     * @dev Check if the caller is the governor or pause guardian.
+     */
+    modifier onlyGovernorOrGuardian() {
+        require(
+            msg.sender == controller.getGovernor() || msg.sender == pauseGuardian,
+            "Only Governor or Guardian can call"
+        );
+        _;
+    }
+
+    /**
      * @dev Override the default pausing from Managed to allow pausing this
      * particular contract besides pausing from the Controller.
      */
     function _notPaused() internal override view {
         require(!controller.paused(), "Paused (controller)");
         require(!_paused, "Paused (contract)");
+    }
+
+    /**
+     * @notice Change the paused state of the contract
+     */
+    function setPaused(bool paused) external onlyGovernorOrGuardian {
+        _setPaused(paused);
     }
 }

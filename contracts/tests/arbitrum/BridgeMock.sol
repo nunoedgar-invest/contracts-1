@@ -17,7 +17,7 @@ contract BridgeMock is IBridge {
         bytes32 messageDataHash
     ) external payable override returns (uint256) {
         messageIndex = messageIndex + 1;
-        inboxAccs.push(keccak256(abi.encodePacked(inbox, messageDataHash)));
+        inboxAccs.push(keccak256(abi.encodePacked(inbox, kind, sender, messageDataHash)));
         emit MessageDelivered(messageIndex, inboxAccs[messageIndex], inbox, 0, msg.sender, messageDataHash);
         return messageIndex;
     }
@@ -29,7 +29,6 @@ contract BridgeMock is IBridge {
     ) external override returns (bool success, bytes memory returnData) {
         require(outbox == msg.sender, "NOT_FROM_OUTBOX");
 
-        // We set and reset active outbox around external call so activeOutbox remains valid during call
         (success, returnData) = destAddr.call{ value: amount }(data);
         emit BridgeCallTriggered(msg.sender, destAddr, amount, data);
     }

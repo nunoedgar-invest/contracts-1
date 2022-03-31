@@ -181,7 +181,7 @@ contract L1GraphTokenGateway is GraphTokenGateway, L1ArbitrumMessenger {
         uint256 escrowBalance = token.balanceOf(address(this));
         // If the bridge doesn't have enough tokens, something's very wrong!
         require(_amount <= escrowBalance, "BRIDGE_OUT_OF_FUNDS");
-        token.transferFrom(address(this), _to, _amount);
+        token.transfer(_to, _amount);
 
         emit WithdrawalFinalized(_l1Token, _from, _to, exitNum, _amount);
     }

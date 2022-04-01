@@ -1,5 +1,6 @@
 import { expect, use } from 'chai'
 import { constants, Signer, utils } from 'ethers'
+import hre from 'hardhat'
 
 import { L2GraphToken } from '../../build/types/L2GraphToken'
 import { L2GraphTokenGateway } from '../../build/types/L2GraphTokenGateway'
@@ -16,15 +17,40 @@ import {
   toBN,
   toGRT,
   Account,
+  provider,
 } from '../lib/testHelpers'
 
 const { AddressZero } = constants
+
+// Adapted from:
+// https://github.com/livepeer/arbitrum-lpt-bridge/blob/e1a81edda3594e434dbcaa4f1ebc95b7e67ecf2a/utils/arbitrum/messaging.ts#L118
+function applyL1ToL2Alias(l1Address: string): string {
+  const offset = toBN('0x1111000000000000000000000000000000001111')
+  const l1AddressAsNumber = toBN(l1Address);
+  const l2AddressAsNumber = l1AddressAsNumber.add(offset);
+
+  const mask = toBN(2).pow(160);
+  return l2AddressAsNumber.mod(mask).toHexString();
+}
+
+// Adapted from:
+// https://github.com/livepeer/arbitrum-lpt-bridge/blob/e1a81edda3594e434dbcaa4f1ebc95b7e67ecf2a/test/utils/messaging.ts#L5
+async function getL2SignerFromL1(
+  l1Address: string,
+): Promise<Signer> {
+  const l2Address = applyL1ToL2Alias(l1Address);
+  await provider().send('hardhat_impersonateAccount', [l2Address])
+  const l2Signer = await hre.ethers.getSigner(l2Address);
+
+  return l2Signer;
+}
 
 describe('L2GraphTokenGateway', () => {
   let me: Account
   let governor: Account
   let tokenSender: Account
   let l1Receiver: Account
+  let l2Receiver: Account
   let mockRouter: Account
   let mockL1GRT: Account
   let mockL1Gateway: Account
@@ -35,7 +61,6 @@ describe('L2GraphTokenGateway', () => {
   let l2GraphTokenGateway: L2GraphTokenGateway
 
   const senderTokens = toGRT('1000')
-  let eventsSetUp = false
   const defaultData = '0x';
   const notEmptyCallHookData = '0x12';
   const defaultDataWithNotEmptyCallHookData =
@@ -45,7 +70,7 @@ describe('L2GraphTokenGateway', () => {
     );
 
   before(async function () {
-    ;[me, governor, tokenSender, l1Receiver, mockRouter, mockL1GRT, mockL1Gateway] = await getAccounts()
+    ;[me, governor, tokenSender, l1Receiver, mockRouter, mockL1GRT, mockL1Gateway, l2Receiver] = await getAccounts()
 
     fixture = new NetworkFixture()
     ;({ grt, l2GraphTokenGateway } = await fixture.loadL2(governor.signer))
@@ -60,15 +85,6 @@ describe('L2GraphTokenGateway', () => {
     arbSysMock = await smock.fake('ArbSys', {
         address: '0x0000000000000000000000000000000000000064',
     })
-    if (!eventsSetUp) {
-      arbSysMock.vm.on('afterMessage', (msg) => {
-        if (msg.to == '0x0000000000000000000000000000000000000064') {
-          console.log(msg)
-        }
-        
-      })
-      eventsSetUp = true
-    }
     arbSysMock.sendTxToL1.returns(1)
   })
 
@@ -274,15 +290,49 @@ describe('L2GraphTokenGateway', () => {
       it('reverts when called by an account that is not the gateway', async function () {
         const tx = l2GraphTokenGateway.connect(tokenSender.signer).finalizeInboundTransfer(
           mockL1GRT.address,
-          l1Receiver.address,
           tokenSender.address,
+          l2Receiver.address,
           toGRT('10'),
           defaultData
         )
         await expect(tx).revertedWith('ONLY_COUNTERPART_GATEWAY')
       })
-      
-      it('mints and sends tokens') // TODO
+      it('reverts when called by an account that is the gateway but without the L2 alias', async function () {
+        const tx = l2GraphTokenGateway.connect(mockL1Gateway.signer).finalizeInboundTransfer(
+          mockL1GRT.address,
+          tokenSender.address,
+          l2Receiver.address,
+          toGRT('10'),
+          defaultData
+        )
+        await expect(tx).revertedWith('ONLY_COUNTERPART_GATEWAY')
+      })
+      it('mints and sends tokens when called by the aliased gateway', async function () {
+        const mockL1GatewayL2Alias = await getL2SignerFromL1(mockL1Gateway.address)
+        await me.signer.sendTransaction({
+          to: await mockL1GatewayL2Alias.getAddress(),
+          value: utils.parseUnits('1', 'ether'),
+        })
+        const tx = l2GraphTokenGateway.connect(mockL1GatewayL2Alias).finalizeInboundTransfer(
+          mockL1GRT.address,
+          tokenSender.address,
+          l2Receiver.address,
+          toGRT('10'),
+          defaultData
+        )
+        await expect(tx).emit(l2GraphTokenGateway, 'DepositFinalized')
+          .withArgs(mockL1GRT.address, tokenSender.address, l2Receiver.address, toGRT('10'))
+
+        await expect(tx).emit(grt, 'BridgeMinted')
+          .withArgs(l2Receiver.address, toGRT('10'))
+
+        // Unchanged
+        const senderBalance = await grt.balanceOf(tokenSender.address)
+        await expect(senderBalance).eq(toGRT('1000'))
+        // 10 newly minted GRT
+        const receiverBalance = await grt.balanceOf(l2Receiver.address)
+        await expect(receiverBalance).eq(toGRT('10'))
+      })
     })
   })
 })

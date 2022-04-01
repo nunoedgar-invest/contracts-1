@@ -11,18 +11,14 @@ import { NetworkFixture } from '../lib/fixtures'
 import { deployContract } from '../lib/deployment'
 
 import {
-  advanceBlockTo,
-  deriveChannelKey,
   getAccounts,
-  randomHexBytes,
   latestBlock,
   toBN,
   toGRT,
-  provider,
   Account,
 } from '../lib/testHelpers'
 
-const { AddressZero, MaxUint256 } = constants
+const { AddressZero } = constants
 
 describe('L1GraphTokenGateway', () => {
   let me: Account
@@ -63,9 +59,9 @@ describe('L1GraphTokenGateway', () => {
     fixture = new NetworkFixture()
     ;({ grt, l1GraphTokenGateway } = await fixture.load(governor.signer))
 
-    // Give some funds to the indexer and approve staking contract to use funds on indexer behalf
+    // Give some funds to the token sender
     await grt.connect(governor.signer).mint(tokenSender.address, senderTokens)
-    //await grt.connect(indexer.signer).approve(staking.address, indexerTokens)
+    // Deploy contracts that mock Arbitrum's bridge contracts
     bridgeMock = (await deployContract(
       'BridgeMock',
       governor.signer,
@@ -252,7 +248,6 @@ describe('L1GraphTokenGateway', () => {
       let msgDataHash = utils.keccak256(msgData)
       let expectedInboxAccsEntry = createInboxAccsEntry(msgDataHash)
       
-      //expectedInboxAccsEntry = '0x0e287fa8d5351f12736c1d3819fd261831eaa7aea462720faf8bc018d6c0791e'
       await expect(tx).emit(inboxMock, 'InboxMessageDelivered')
         .withArgs(expectedSeqNum, msgData)
       await expect(tx).emit(bridgeMock, 'MessageDelivered')
@@ -333,6 +328,21 @@ describe('L1GraphTokenGateway', () => {
           }
         )
         await expect(tx).revertedWith('WRONG_ETH_VALUE')
+      })
+      it('reverts when called with nonempty calldata', async function () {
+        await grt.connect(tokenSender.signer).approve(l1GraphTokenGateway.address, toGRT('10'))
+        const tx = l1GraphTokenGateway.connect(tokenSender.signer).outboundTransfer(
+          grt.address,
+          l2Receiver.address,
+          toGRT('10'),
+          maxGas,
+          gasPriceBid,
+          defaultDataWithNotEmptyCallHookData,
+          {
+            value: defaultEthValue
+          }
+        )
+        await expect(tx).revertedWith('CALL_HOOK_DATA_NOT_ALLOWED')
       })
       it('reverts when the sender does not have enough GRT', async function () {
         await grt.connect(tokenSender.signer).approve(l1GraphTokenGateway.address, toGRT('1001'))

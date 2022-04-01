@@ -1,13 +1,8 @@
 import { expect } from 'chai'
-import { constants, utils, BytesLike, BigNumber, Signature } from 'ethers'
 
-import * as deployment from '../lib/deployment'
-import { getAccounts, getChainID, toBN, toGRT, Account, initNetwork } from '../lib/testHelpers'
+import { getAccounts, toGRT, Account, initNetwork } from '../lib/testHelpers'
 
 import { L2GraphToken } from '../../build/types/L2GraphToken'
-
-const { AddressZero, MaxUint256 } = constants
-const { keccak256, SigningKey } = utils
 
 import { grtTests } from '../lib/graphTokenTests'
 import { NetworkFixture } from '../lib/fixtures'

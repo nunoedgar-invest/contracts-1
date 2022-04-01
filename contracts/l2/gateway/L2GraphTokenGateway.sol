@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 pragma solidity ^0.7.6;
+pragma abicoder v2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
@@ -85,26 +86,6 @@ contract L2GraphTokenGateway is GraphTokenGateway, L2ArbitrumMessenger {
 
     /**
      * @notice Burns L2 tokens and initiates a transfer to L1.
-     * The tokens will be received on L1 only after the wait period (7 days) is over,
-     * and will require an Outbox.executeTransaction to finalize.
-     * @dev no additional callhook data is allowed
-     * @param _l1Token L1 Address of LPT
-     * @param _to Recipient address on L1
-     * @param _amount Amount of tokens to burn
-     * @param _data Contains sender and additional data to send to L1
-     * @return ID of the withdraw tx
-     */
-    function outboundTransfer(
-        address _l1Token,
-        address _to,
-        uint256 _amount,
-        bytes calldata _data
-    ) external returns (bytes memory) {
-        return this.outboundTransfer(_l1Token, _to, _amount, 0, 0, _data);
-    }
-
-    /**
-     * @notice Burns L2 tokens and initiates a transfer to L1.
      * The tokens will be available on L1 only after the wait period (7 days) is over,
      * and will require an Outbox.executeTransaction to finalize.
      * @dev no additional callhook data is allowed. The two unused params are needed
@@ -123,7 +104,7 @@ contract L2GraphTokenGateway is GraphTokenGateway, L2ArbitrumMessenger {
         uint256, // unused on L2
         uint256, // unused on L2
         bytes calldata _data
-    ) external override payable notPaused returns (bytes memory) {
+    ) public override payable notPaused returns (bytes memory) {
         require(_l1Token == l1GRT, "TOKEN_NOT_GRT");
         require(_amount > 0, "INVALID_ZERO_AMOUNT");
         require(msg.value == 0, "INVALID_NONZERO_VALUE");
@@ -150,6 +131,39 @@ contract L2GraphTokenGateway is GraphTokenGateway, L2ArbitrumMessenger {
     }
 
     /**
+     * @notice Burns L2 tokens and initiates a transfer to L1.
+     * The tokens will be received on L1 only after the wait period (7 days) is over,
+     * and will require an Outbox.executeTransaction to finalize.
+     * @dev no additional callhook data is allowed
+     * @param _l1Token L1 Address of LPT
+     * @param _to Recipient address on L1
+     * @param _amount Amount of tokens to burn
+     * @param _data Contains sender and additional data to send to L1
+     * @return ID of the withdraw tx
+     */
+    function outboundTransfer(
+        address _l1Token,
+        address _to,
+        uint256 _amount,
+        bytes calldata _data
+    ) external returns (bytes memory) {
+        return outboundTransfer(_l1Token, _to, _amount, uint256(0), uint256(0), _data);
+    }
+
+    /**
+     * @notice Calculate the L2 address of a bridged token
+     * @dev In our case, this would only work for GRT.
+     * @param l1ERC20 address of L1 GRT contract
+     * @return L2 address of the bridged GRT token
+     */
+    function calculateL2TokenAddress(address l1ERC20) public override view returns (address) {
+        if (l1ERC20 != l1GRT) {
+            return address(0);
+        }
+        return Managed._resolveContract(keccak256("GraphToken"));
+    }
+
+    /**
      * @notice Receives token amount from L1 and mints the equivalent tokens to the receiving address
      * @dev Only accepts transactions from the L1 GRT Gateway
      * data param is unused because no additional data is allowed from L1.
@@ -165,26 +179,13 @@ contract L2GraphTokenGateway is GraphTokenGateway, L2ArbitrumMessenger {
         address _to,
         uint256 _amount,
         bytes calldata // _data unused in L2
-    ) external override payable onlyL1Counterpart {
+    ) external override payable notPaused onlyL1Counterpart {
         require(_l1Token == l1GRT, "TOKEN_NOT_GRT");
         require(msg.value == 0, "INVALID_NONZERO_VALUE");
 
-        L2GraphToken(this.calculateL2TokenAddress(l1GRT)).bridgeMint(_to, _amount);
+        L2GraphToken(calculateL2TokenAddress(l1GRT)).bridgeMint(_to, _amount);
 
         emit DepositFinalized(_l1Token, _from, _to, _amount);
-    }
-
-    /**
-     * @notice Calculate the L2 address of a bridged token
-     * @dev In our case, this would only work for GRT.
-     * @param l1ERC20 address of L1 GRT contract
-     * @return L2 address of the bridged GRT token
-     */
-    function calculateL2TokenAddress(address l1ERC20) external override view returns (address) {
-        if (l1ERC20 != l1GRT) {
-            return address(0);
-        }
-        return Managed._resolveContract(keccak256("GraphToken"));
     }
 
     /**

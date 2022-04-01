@@ -27,6 +27,7 @@ pragma solidity ^0.7.6;
 
 import "arbos-precompiles/arbos/builtin/ArbSys.sol";
 
+import "hardhat/console.sol";
 /// @notice L2 utility contract to assist with L1 <=> L2 interactions
 /// @dev this is an abstract contract instead of library so the functions can be easily overriden when testing
 abstract contract L2ArbitrumMessenger {
@@ -40,6 +41,7 @@ abstract contract L2ArbitrumMessenger {
         address _to,
         bytes memory _data
     ) internal virtual returns (uint256) {
+        console.log("SendTxToL1 called");
         uint256 _id = ArbSys(ARB_SYS_ADDRESS).sendTxToL1{ value: _l1CallValue }(_to, _data);
         emit TxToL1(_from, _to, _id, _data);
         return _id;

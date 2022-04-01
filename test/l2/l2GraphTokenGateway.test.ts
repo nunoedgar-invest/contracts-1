@@ -18,20 +18,10 @@ import {
   toGRT,
   Account,
   provider,
+  applyL1ToL2Alias
 } from '../lib/testHelpers'
 
 const { AddressZero } = constants
-
-// Adapted from:
-// https://github.com/livepeer/arbitrum-lpt-bridge/blob/e1a81edda3594e434dbcaa4f1ebc95b7e67ecf2a/utils/arbitrum/messaging.ts#L118
-function applyL1ToL2Alias(l1Address: string): string {
-  const offset = toBN('0x1111000000000000000000000000000000001111')
-  const l1AddressAsNumber = toBN(l1Address);
-  const l2AddressAsNumber = l1AddressAsNumber.add(offset);
-
-  const mask = toBN(2).pow(160);
-  return l2AddressAsNumber.mod(mask).toHexString();
-}
 
 // Adapted from:
 // https://github.com/livepeer/arbitrum-lpt-bridge/blob/e1a81edda3594e434dbcaa4f1ebc95b7e67ecf2a/test/utils/messaging.ts#L5
@@ -54,6 +44,7 @@ describe('L2GraphTokenGateway', () => {
   let mockRouter: Account
   let mockL1GRT: Account
   let mockL1Gateway: Account
+  let pauseGuardian: Account
   let fixture: NetworkFixture
   let arbSysMock: FakeContract
 
@@ -70,7 +61,7 @@ describe('L2GraphTokenGateway', () => {
     );
 
   before(async function () {
-    ;[me, governor, tokenSender, l1Receiver, mockRouter, mockL1GRT, mockL1Gateway, l2Receiver] = await getAccounts()
+    ;[me, governor, tokenSender, l1Receiver, mockRouter, mockL1GRT, mockL1Gateway, l2Receiver, pauseGuardian] = await getAccounts()
 
     fixture = new NetworkFixture()
     ;({ grt, l2GraphTokenGateway } = await fixture.loadL2(governor.signer))
@@ -172,6 +163,41 @@ describe('L2GraphTokenGateway', () => {
         await expect(tx).emit(l2GraphTokenGateway, 'L1CounterpartAddressSet')
           .withArgs(mockL1Gateway.address)
         expect(await l2GraphTokenGateway.l1Counterpart()).eq(mockL1Gateway.address)
+      })
+    })
+    describe('Pausable behavior', () => {
+      it('cannot be paused or unpaused by someone other than governor or pauseGuardian', async () => {
+        let tx = l2GraphTokenGateway.connect(tokenSender.signer).setPaused(false)
+        await expect(tx).revertedWith('Only Governor or Guardian can call')
+        tx = l2GraphTokenGateway.connect(tokenSender.signer).setPaused(true)
+        await expect(tx).revertedWith('Only Governor or Guardian can call')
+      })
+      it('can be paused and unpaused by the governor', async function () {
+        let tx = l2GraphTokenGateway.connect(governor.signer).setPaused(false)
+        await expect(tx).emit(l2GraphTokenGateway, 'PauseChanged').withArgs(false)
+        await expect(await l2GraphTokenGateway.paused()).eq(false)
+        tx = l2GraphTokenGateway.connect(governor.signer).setPaused(true)
+        await expect(tx).emit(l2GraphTokenGateway, 'PauseChanged').withArgs(true)
+        await expect(await l2GraphTokenGateway.paused()).eq(true)
+      })
+      describe('setPauseGuardian', function () {
+        it('cannot be called by someone other than governor', async function () {
+          const tx = l2GraphTokenGateway.connect(tokenSender.signer).setPauseGuardian(pauseGuardian.address)
+          await expect(tx).revertedWith('Caller must be Controller governor')
+        })
+        it('sets a new pause guardian', async function () {
+          const tx = l2GraphTokenGateway.connect(governor.signer).setPauseGuardian(pauseGuardian.address)
+          await expect(tx).emit(l2GraphTokenGateway, 'NewPauseGuardian').withArgs(AddressZero, pauseGuardian.address)
+        })
+        it('allows a pause guardian to pause and unpause', async function () {
+          await l2GraphTokenGateway.connect(governor.signer).setPauseGuardian(pauseGuardian.address)
+          let tx = l2GraphTokenGateway.connect(pauseGuardian.signer).setPaused(false)
+          await expect(tx).emit(l2GraphTokenGateway, 'PauseChanged').withArgs(false)
+          await expect(await l2GraphTokenGateway.paused()).eq(false)
+          tx = l2GraphTokenGateway.connect(pauseGuardian.signer).setPaused(true)
+          await expect(tx).emit(l2GraphTokenGateway, 'PauseChanged').withArgs(true)
+          await expect(await l2GraphTokenGateway.paused()).eq(true)
+        })
       })
     })
   })

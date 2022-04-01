@@ -16,18 +16,19 @@ import {
   toBN,
   toGRT,
   Account,
+  applyL1ToL2Alias,
 } from '../lib/testHelpers'
 
 const { AddressZero } = constants
 
 describe('L1GraphTokenGateway', () => {
-  let me: Account
   let governor: Account
   let tokenSender: Account
   let l2Receiver: Account
   let mockRouter: Account
   let mockL2GRT: Account
   let mockL2Gateway: Account
+  let pauseGuardian: Account
   let fixture: NetworkFixture
 
   let grt: GraphToken
@@ -54,7 +55,7 @@ describe('L1GraphTokenGateway', () => {
     );
 
   before(async function () {
-    ;[me, governor, tokenSender, l2Receiver, mockRouter, mockL2GRT, mockL2Gateway] = await getAccounts()
+    ;[governor, tokenSender, l2Receiver, mockRouter, mockL2GRT, mockL2Gateway, pauseGuardian] = await getAccounts()
 
     fixture = new NetworkFixture()
     ;({ grt, l1GraphTokenGateway } = await fixture.load(governor.signer))
@@ -174,6 +175,41 @@ describe('L1GraphTokenGateway', () => {
         expect(await l1GraphTokenGateway.l2Counterpart()).eq(mockL2Gateway.address)
       })
     })
+    describe('Pausable behavior', () => {
+      it('cannot be paused or unpaused by someone other than governor or pauseGuardian', async () => {
+        let tx = l1GraphTokenGateway.connect(tokenSender.signer).setPaused(false)
+        await expect(tx).revertedWith('Only Governor or Guardian can call')
+        tx = l1GraphTokenGateway.connect(tokenSender.signer).setPaused(true)
+        await expect(tx).revertedWith('Only Governor or Guardian can call')
+      })
+      it('can be paused and unpaused by the governor', async function () {
+        let tx = l1GraphTokenGateway.connect(governor.signer).setPaused(false)
+        await expect(tx).emit(l1GraphTokenGateway, 'PauseChanged').withArgs(false)
+        await expect(await l1GraphTokenGateway.paused()).eq(false)
+        tx = l1GraphTokenGateway.connect(governor.signer).setPaused(true)
+        await expect(tx).emit(l1GraphTokenGateway, 'PauseChanged').withArgs(true)
+        await expect(await l1GraphTokenGateway.paused()).eq(true)
+      })
+      describe('setPauseGuardian', function () {
+        it('cannot be called by someone other than governor', async function () {
+          const tx = l1GraphTokenGateway.connect(tokenSender.signer).setPauseGuardian(pauseGuardian.address)
+          await expect(tx).revertedWith('Caller must be Controller governor')
+        })
+        it('sets a new pause guardian', async function () {
+          const tx = l1GraphTokenGateway.connect(governor.signer).setPauseGuardian(pauseGuardian.address)
+          await expect(tx).emit(l1GraphTokenGateway, 'NewPauseGuardian').withArgs(AddressZero, pauseGuardian.address)
+        })
+        it('allows a pause guardian to pause and unpause', async function () {
+          await l1GraphTokenGateway.connect(governor.signer).setPauseGuardian(pauseGuardian.address)
+          let tx = l1GraphTokenGateway.connect(pauseGuardian.signer).setPaused(false)
+          await expect(tx).emit(l1GraphTokenGateway, 'PauseChanged').withArgs(false)
+          await expect(await l1GraphTokenGateway.paused()).eq(false)
+          tx = l1GraphTokenGateway.connect(pauseGuardian.signer).setPaused(true)
+          await expect(tx).emit(l1GraphTokenGateway, 'PauseChanged').withArgs(true)
+          await expect(await l1GraphTokenGateway.paused()).eq(true)
+        })
+      })
+    })
   })
 
   context('> after configuring and unpausing', function () {
@@ -188,7 +224,6 @@ describe('L1GraphTokenGateway', () => {
       )
       const outboundData = utils.hexlify(utils.concat([ selector, params ]))
       
-      const offset = toBN('0x1111000000000000000000000000000000001111')
       let msgData = utils.solidityPack(
         [
           'uint256',
@@ -207,8 +242,8 @@ describe('L1GraphTokenGateway', () => {
           toBN('0'),
           defaultEthValue,
           maxSubmissionCost,
-          toBN(tokenSender.address).add(offset),
-          toBN(tokenSender.address).add(offset),
+          applyL1ToL2Alias(tokenSender.address),
+          applyL1ToL2Alias(tokenSender.address),
           maxGas,
           gasPriceBid,
           utils.hexDataLength(outboundData),
@@ -249,7 +284,7 @@ describe('L1GraphTokenGateway', () => {
       let expectedInboxAccsEntry = createInboxAccsEntry(msgDataHash)
       
       await expect(tx).emit(inboxMock, 'InboxMessageDelivered')
-        .withArgs(expectedSeqNum, msgData)
+        .withArgs(1, msgData)
       await expect(tx).emit(bridgeMock, 'MessageDelivered')
         .withArgs(expectedSeqNum, expectedInboxAccsEntry, inboxMock.address, 9, l1GraphTokenGateway.address, msgDataHash)
       const escrowBalance = await grt.balanceOf(l1GraphTokenGateway.address)

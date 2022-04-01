@@ -27,6 +27,15 @@ abstract contract GraphTokenGateway is GraphUpgradeable, Pausable, Managed, ITok
     }
 
     /**
+     * @notice Change the Pause Guardian
+     * @param _newPauseGuardian The address of the new Pause Guardian
+     */
+    function setPauseGuardian(address _newPauseGuardian) external onlyGovernor {
+        require(_newPauseGuardian != address(0), "PauseGuardian must be set");
+        _setPauseGuardian(_newPauseGuardian);
+    }
+
+    /**
      * @dev Override the default pausing from Managed to allow pausing this
      * particular contract besides pausing from the Controller.
      */
@@ -38,7 +47,14 @@ abstract contract GraphTokenGateway is GraphUpgradeable, Pausable, Managed, ITok
     /**
      * @notice Change the paused state of the contract
      */
-    function setPaused(bool paused) external onlyGovernorOrGuardian {
-        _setPaused(paused);
+    function setPaused(bool newPaused) external onlyGovernorOrGuardian {
+        _setPaused(newPaused);
+    }
+
+    /**
+     * @notice Getter to access paused
+     */
+    function paused() external view returns (bool) {
+        return _paused;
     }
 }

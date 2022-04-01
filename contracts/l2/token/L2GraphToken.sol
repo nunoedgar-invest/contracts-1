@@ -67,15 +67,15 @@ contract GraphTokenUpgradeable is GraphUpgradeable, Governed, ERC20Upgradeable, 
      * @dev Graph Token Contract initializer.
      * @param _initialSupply Initial supply of GRT
      */
-    function _initialize(uint256 _initialSupply) internal {
+    function _initialize(address owner, uint256 _initialSupply) internal {
         __ERC20_init("Graph Token", "GRT");
-        Governed._initialize(msg.sender);
+        Governed._initialize(owner);
 
         // The Governor has the initial supply of tokens
-        _mint(msg.sender, _initialSupply);
+        _mint(owner, _initialSupply);
 
         // The Governor is the default minter
-        _addMinter(msg.sender);
+        _addMinter(owner);
 
         // EIP-712 domain separator
         DOMAIN_SEPARATOR = keccak256(
@@ -207,7 +207,7 @@ contract GraphTokenUpgradeable is GraphUpgradeable, Governed, ERC20Upgradeable, 
 contract L2GraphToken is GraphTokenUpgradeable, IArbToken {
     using SafeMath for uint256;
     address public gateway;
-    address public l1GRT;
+    address public override l1Address;
 
     event BridgeMinted(address indexed account, uint256 amount);
     event BridgeBurned(address indexed account, uint256 amount);
@@ -222,8 +222,8 @@ contract L2GraphToken is GraphTokenUpgradeable, IArbToken {
      * @dev L2 Graph Token Contract Constructor.
      * @param _initialSupply Initial supply of GRT
      */
-    function initialize(uint256 _initialSupply) external onlyImpl {
-        GraphTokenUpgradeable._initialize(_initialSupply);
+    function initialize(address owner, uint256 _initialSupply) external onlyImpl {
+        GraphTokenUpgradeable._initialize(owner, _initialSupply);
     }
 
     function setGateway(address gw) external onlyGovernor {
@@ -232,8 +232,8 @@ contract L2GraphToken is GraphTokenUpgradeable, IArbToken {
     }
 
     function setL1Address(address addr) external onlyGovernor {
-        l1GRT = addr;
-        emit L1AddressSet(l1GRT);
+        l1Address = addr;
+        emit L1AddressSet(addr);
     }
 
     /**
@@ -254,13 +254,5 @@ contract L2GraphToken is GraphTokenUpgradeable, IArbToken {
     function bridgeBurn(address account, uint256 amount) external override onlyGateway {
         burnFrom(account, amount);
         emit BridgeBurned(account, amount);
-    }
-
-    /**
-     * @dev Get the address of the L1 counterpart of this token
-     * @return address of layer 1 token
-     */
-    function l1Address() external override view returns (address) {
-        return l1GRT;
     }
 }

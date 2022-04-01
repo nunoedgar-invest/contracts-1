@@ -22,6 +22,8 @@ import { GSRManager } from '../../build/types/GSRManager'
 import { GraphGovernance } from '../../build/types/GraphGovernance'
 import { SubgraphNFT } from '../../build/types/SubgraphNFT'
 import { L1GraphTokenGateway } from '../../build/types/L1GraphTokenGateway'
+import { L2GraphTokenGateway } from '../../build/types/L2GraphTokenGateway'
+import { L2GraphToken } from '../../build/types/L2GraphToken'
 
 // Disable logging for tests
 logger.pause()
@@ -281,4 +283,29 @@ export async function deployL1GraphTokenGateway(
     [controller],
     deployer,
   ) as unknown as L1GraphTokenGateway
+}
+
+export async function deployL2GraphTokenGateway(
+  deployer: Signer,
+  controller: string,
+  proxyAdmin: GraphProxyAdmin,
+): Promise<L2GraphTokenGateway> {
+  return network.deployContractWithProxy(
+    proxyAdmin,
+    'L2GraphTokenGateway',
+    [controller],
+    deployer,
+  ) as unknown as L2GraphTokenGateway
+}
+
+export async function deployL2GRT(
+  deployer: Signer,
+  proxyAdmin: GraphProxyAdmin,
+): Promise<L2GraphToken> {
+  return network.deployContractWithProxy(
+    proxyAdmin,
+    'L2GraphToken',
+    [await deployer.getAddress(), toBN('0')],
+    deployer,
+  ) as unknown as L2GraphToken
 }

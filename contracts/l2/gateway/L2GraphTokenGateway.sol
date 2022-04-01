@@ -59,6 +59,14 @@ contract L2GraphTokenGateway is GraphTokenGateway, L2ArbitrumMessenger {
         );
         _;
     }
+    /**
+     * @dev Initialize this contract.
+     */
+    function initialize(address _controller) external onlyImpl {
+        Managed._initialize(_controller);
+        __ReentrancyGuard_init();
+        _paused = true;
+    }
 
     function setL2Router(address _l2Router) external onlyGovernor {
         l2Router = _l2Router;

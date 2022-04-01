@@ -25,6 +25,14 @@ export interface Account {
 
 export const provider = (): providers.JsonRpcProvider => hre.waffle.provider
 
+// Enable automining with each transaction, and disable
+// the mining interval. Individual tests may modify this
+// behavior as needed.
+export function initNetwork() {
+  provider().send('evm_setIntervalMining', [0])
+  provider().send('evm_setAutomine', [true])
+}
+
 export const getAccounts = async (): Promise<Account[]> => {
   const accounts = []
   const signers: Signer[] = await hre.ethers.getSigners()

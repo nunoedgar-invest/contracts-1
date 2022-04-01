@@ -2,7 +2,7 @@
 import { utils, Wallet, Signer } from 'ethers'
 
 import * as deployment from './deployment'
-import { evmSnapshot, evmRevert, provider } from './testHelpers'
+import { evmSnapshot, evmRevert, provider, initNetwork } from './testHelpers'
 
 export class NetworkFixture {
   lastSnapshotId: number
@@ -16,11 +16,8 @@ export class NetworkFixture {
     slasher: Signer = Wallet.createRandom() as Signer,
     arbitrator: Signer = Wallet.createRandom() as Signer,
   ): Promise<any> {
-    // Enable automining with each transaction, and disable
-    // the mining interval. Individual tests may modify this
-    // behavior as needed.
-    provider().send('evm_setIntervalMining', [0])
-    provider().send('evm_setAutomine', [true])
+    
+    initNetwork()
 
     // Roles
     const arbitratorAddress = await arbitrator.getAddress()
@@ -98,6 +95,54 @@ export class NetworkFixture {
       serviceRegistry,
       proxyAdmin,
       l1GraphTokenGateway,
+    }
+  }
+
+  async loadL2(
+    deployer: Signer,
+    slasher: Signer = Wallet.createRandom() as Signer,
+    arbitrator: Signer = Wallet.createRandom() as Signer,
+  ): Promise<any> {
+    // Enable automining with each transaction, and disable
+    // the mining interval. Individual tests may modify this
+    // behavior as needed.
+    provider().send('evm_setIntervalMining', [0])
+    provider().send('evm_setAutomine', [true])
+
+    // Roles
+    const arbitratorAddress = await arbitrator.getAddress()
+    const slasherAddress = await slasher.getAddress()
+
+    // Deploy contracts
+    const proxyAdmin = await deployment.deployProxyAdmin(deployer)
+    const controller = await deployment.deployController(deployer)
+
+    const grt = await deployment.deployL2GRT(
+      deployer,
+      proxyAdmin,
+    )
+
+    const l2GraphTokenGateway = await deployment.deployL2GraphTokenGateway(
+      deployer,
+      controller.address,
+      proxyAdmin,
+    )
+
+    // Setup controller
+    await controller.setContractProxy(utils.id('GraphToken'), grt.address)
+    await controller.setContractProxy(utils.id('GraphTokenGateway'), l2GraphTokenGateway.address)
+
+    // Setup contracts
+    await grt.connect(deployer).addMinter(l2GraphTokenGateway.address)
+
+    // Unpause the protocol
+    await controller.connect(deployer).setPaused(false)
+
+    return {
+      controller,
+      grt,
+      proxyAdmin,
+      l2GraphTokenGateway,
     }
   }
 

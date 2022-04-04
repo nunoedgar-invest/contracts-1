@@ -89,7 +89,7 @@ contract L1GraphTokenGateway is GraphTokenGateway, L1ArbitrumMessenger {
      * @notice Creates and sends a retryable ticket to transfer GRT to L2 using the Arbitrum Inbox.
      * The tokens are escrowed by the gateway until they are withdrawn back to L1.
      * The ticket must be redeemed on L2 to receive tokens at the specified address.
-     * @dev maxGas and gasPriceBid must be set using Arbitrum's Inbox.estimateRetryableTicket method.
+     * @dev maxGas and gasPriceBid must be set using Arbitrum's NodeInterface.estimateRetryableTicket method.
      * @param _l1Token L1 Address of the GRT contract
      * @param _to Recipient address on L2
      * @param _amount Amount of tokens to tranfer

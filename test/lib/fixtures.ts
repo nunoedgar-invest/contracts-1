@@ -103,11 +103,8 @@ export class NetworkFixture {
     slasher: Signer = Wallet.createRandom() as Signer,
     arbitrator: Signer = Wallet.createRandom() as Signer,
   ): Promise<any> {
-    // Enable automining with each transaction, and disable
-    // the mining interval. Individual tests may modify this
-    // behavior as needed.
-    provider().send('evm_setIntervalMining', [0])
-    provider().send('evm_setAutomine', [true])
+
+    initNetwork()
 
     // Roles
     const arbitratorAddress = await arbitrator.getAddress()

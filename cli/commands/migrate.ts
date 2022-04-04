@@ -73,7 +73,7 @@ export const migrate = async (cli: CLIEnvironment, cliArgs: CLIArgs): Promise<vo
 
   if (chainId == 1337) {
     allContracts = ['EthereumDIDRegistry', ...allContracts]
-  } else if (chainId in l2ChainIds) {
+  } else if (l2ChainIds.includes(chainId)) {
     allContracts = l2Contracts
   }
 

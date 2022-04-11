@@ -178,7 +178,7 @@ contract InboxMock is IInbox {
      * @dev Deliver a message to the bridge
      * @param _kind Type of the message
      * @param _sender Address that is sending the message
-     * @param messageData Encoded message data
+     * @param _messageData Encoded message data
      * @return Message number returned by the bridge
      */
     function _deliverMessage(

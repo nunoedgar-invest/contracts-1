@@ -16,7 +16,7 @@ import "../governance/Managed.sol";
 abstract contract GraphTokenGateway is GraphUpgradeable, Pausable, Managed, ITokenGateway, ReentrancyGuardUpgradeable {
 
     /**
-     * @dev Check if the caller is the Controller's governor or pause guardian.
+     * @dev Check if the caller is the Controller's governor or this contract's pause guardian.
      */
     modifier onlyGovernorOrGuardian() {
         require(
@@ -27,7 +27,7 @@ abstract contract GraphTokenGateway is GraphUpgradeable, Pausable, Managed, ITok
     }
 
     /**
-     * @notice Change the Pause Guardian
+     * @notice Change the Pause Guardian for this contract
      * @param _newPauseGuardian The address of the new Pause Guardian
      */
     function setPauseGuardian(address _newPauseGuardian) external onlyGovernor {
@@ -52,7 +52,7 @@ abstract contract GraphTokenGateway is GraphUpgradeable, Pausable, Managed, ITok
     }
 
     /**
-     * @notice Getter to access paused
+     * @notice Getter to access paused state of this contract
      */
     function paused() external view returns (bool) {
         return _paused;

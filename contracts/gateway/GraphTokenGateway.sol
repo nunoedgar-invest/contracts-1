@@ -16,7 +16,7 @@ import "../governance/Managed.sol";
 abstract contract GraphTokenGateway is GraphUpgradeable, Pausable, Managed, ITokenGateway, ReentrancyGuardUpgradeable {
 
     /**
-     * @dev Check if the caller is the governor or pause guardian.
+     * @dev Check if the caller is the Controller's governor or pause guardian.
      */
     modifier onlyGovernorOrGuardian() {
         require(
@@ -45,6 +45,7 @@ abstract contract GraphTokenGateway is GraphUpgradeable, Pausable, Managed, ITok
 
     /**
      * @notice Change the paused state of the contract
+     * @param newPaused New value for the pause state (true means the transfers will be paused)
      */
     function setPaused(bool newPaused) external onlyGovernorOrGuardian {
         _setPaused(newPaused);

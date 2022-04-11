@@ -206,38 +206,55 @@ contract GraphTokenUpgradeable is GraphUpgradeable, Governed, ERC20Upgradeable, 
  */
 contract L2GraphToken is GraphTokenUpgradeable, IArbToken {
     using SafeMath for uint256;
+
+    // Address of the gateway (on L2) that is allowed to mint tokens
     address public gateway;
+    // Address of the corresponding Graph Token contract on L1
     address public override l1Address;
 
+    // Emitted when the bridge / gateway has minted new tokens, i.e. tokens were transferred to L2
     event BridgeMinted(address indexed account, uint256 amount);
+    // Emitted when the bridge / gateway has burned tokens, i.e. tokens were transferred back to L1
     event BridgeBurned(address indexed account, uint256 amount);
+    // Emitted when the address of the gateway has been updated
     event GatewaySet(address gateway);
+    // Emitted when the address of the Graph Token contract on L1 has been updated
     event L1AddressSet(address l1Address);
 
+    /**
+     * @dev Checks that the sender is the L2 gateway from the L1/L2 token bridge
+     */
     modifier onlyGateway() {
         require(msg.sender == gateway, "NOT_GATEWAY");
         _;
     }
     /**
-     * @dev L2 Graph Token Contract Constructor.
+     * @dev L2 Graph Token Contract initializer.
+     * @param owner Governance address that owns this contract
      * @param _initialSupply Initial supply of GRT
      */
     function initialize(address owner, uint256 _initialSupply) external onlyImpl {
         GraphTokenUpgradeable._initialize(owner, _initialSupply);
     }
 
+    /**
+     * @dev Sets the address of the L2 gateway allowed to mint tokens
+     */
     function setGateway(address gw) external onlyGovernor {
         gateway = gw;
         emit GatewaySet(gateway);
     }
 
+    /**
+     * @dev Sets the address of the counterpart token on L1
+     */
     function setL1Address(address addr) external onlyGovernor {
         l1Address = addr;
         emit L1AddressSet(addr);
     }
 
     /**
-     * @dev Increases token supply, only callable by the L1 bridge.
+     * @dev Increases token supply, only callable by the L1/L2 bridge (when tokens are transferred to L2)
      * @param account Address to credit with the new tokens
      * @param amount Number of tokens to mint
      */
@@ -247,7 +264,7 @@ contract L2GraphToken is GraphTokenUpgradeable, IArbToken {
     }
 
     /**
-     * @dev Decreases token supply, only callable by the L1 bridge.
+     * @dev Decreases token supply, only callable by the L1/L2 bridge (when tokens are transferred to L1).
      * @param account Address from which to extract the tokens
      * @param amount Number of tokens to burn
      */

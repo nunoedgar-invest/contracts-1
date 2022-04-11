@@ -20,11 +20,16 @@ import "./GraphTokenGateway.sol";
 contract L1GraphTokenGateway is GraphTokenGateway, L1ArbitrumMessenger {
     using SafeMath for uint256;
 
+    // Address of the Graph Token contract on L2
     address public l2GRT;
+    // Address of the Arbitrum Inbox
     address public inbox;
+    // Address of the Arbitrum Gateway Router on L1
     address public l1Router;
+    // Address of the L2GraphTokenGateway on L2 that is the counterpart of this gateway
     address public l2Counterpart;
 
+    // Emitted when an outbound transfer is initiated, i.e. tokens are deposited from L1 to L2
     event DepositInitiated(
         address _l1Token,
         address indexed _from,
@@ -33,6 +38,7 @@ contract L1GraphTokenGateway is GraphTokenGateway, L1ArbitrumMessenger {
         uint256 _amount
     );
 
+    // Emitted when an incoming transfer is finalized, i.e tokens are withdrawn from L2 to L1
     event WithdrawalFinalized(
         address _l1Token,
         address indexed _from,
@@ -41,12 +47,17 @@ contract L1GraphTokenGateway is GraphTokenGateway, L1ArbitrumMessenger {
         uint256 _amount
     );
 
+    // Emitted when the Arbitrum Inbox and Gateway Router addresses have been updated
     event ArbitrumAddressesSet(address _inbox, address _l1Router);
+    // Emitted when the L2 GRT address has been updated
     event L2TokenAddressSet(address _l2GRT);
+    // Emitted when the counterpart L2GraphTokenGateway address has been updated
     event L2CounterpartAddressSet(address _l2Counterpart);
 
     /**
      * @dev Allows a function to be called only by the gateway's L2 counterpart.
+     * The message will actually come from the Arbitrum Bridge, but the Outbox
+     * can tell us who the sender from L2 is.
      */
     modifier onlyL2Counterpart() {
         // a message coming from the counterpart gateway was executed by the bridge
@@ -62,6 +73,8 @@ contract L1GraphTokenGateway is GraphTokenGateway, L1ArbitrumMessenger {
 
     /**
      * @dev Initialize this contract.
+     * The contract will be paused.
+     * @param _controller Address of the Controller that manages this contract
      */
     function initialize(address _controller) external onlyImpl {
         Managed._initialize(_controller);
@@ -69,17 +82,30 @@ contract L1GraphTokenGateway is GraphTokenGateway, L1ArbitrumMessenger {
         _paused = true;
     }
 
+    /**
+     * @dev sets the addresses for L1 contracts provided by Arbitrum
+     * @param _inbox Address of the Inbox that is part of the Arbitrum Bridge
+     * @param _l1Router Address of the Gateway Router
+     */
     function setArbitrumAddresses(address _inbox, address _l1Router) external onlyGovernor {
         inbox = _inbox;
         l1Router = _l1Router;
         emit ArbitrumAddressesSet(_inbox, _l1Router);
     }
 
+    /**
+     * @dev Sets the address of the L2 Graph Token
+     * @param _l2GRT Address of the GRT contract on L2
+     */
     function setL2TokenAddress(address _l2GRT) external onlyGovernor {
         l2GRT = _l2GRT;
         emit L2TokenAddressSet(_l2GRT);
     }
 
+    /**
+     * @dev Sets the address of the counterpart gateway on L2
+     * @param _l2Counterpart Address of the corresponding L2GraphTokenGateway on Arbitrum
+     */
     function setL2CounterpartAddress(address _l2Counterpart) external onlyGovernor {
         l2Counterpart = _l2Counterpart;
         emit L2CounterpartAddressSet(_l2Counterpart);
@@ -205,13 +231,14 @@ contract L1GraphTokenGateway is GraphTokenGateway, L1ArbitrumMessenger {
         )
     {
         if (msg.sender == l1Router) {
-            // router encoded
+            // Data encoded by the Gateway Router includes the sender address
             (from, extraData) = abi.decode(data, (address, bytes));
         } else {
             from = msg.sender;
             extraData = data;
         }
-        // user encoded
+        // User-encoded data contains the max retryable ticket submission cost
+        // and additional L2 calldata
         (maxSubmissionCost, extraData) = abi.decode(
             extraData,
             (uint256, bytes)
@@ -222,6 +249,12 @@ contract L1GraphTokenGateway is GraphTokenGateway, L1ArbitrumMessenger {
      * @notice Creates calldata required to create a retryable ticket
      * @dev encodes the target function with its params which
      * will be called on L2 when the retryable ticket is redeemed
+     * @param l1Token Address of the Graph token contract on L1
+     * @param from Address on L1 from which we're transferring tokens
+     * @param to Address on L2 to which we're transferring tokens
+     * @param amount Amount of GRT to transfer
+     * @param data Additional call data for the L2 transaction, which must be empty
+     * @return outboundCalldata Encoded calldata (including function selector) for the L2 transaction
      */
     function getOutboundCalldata(
         address l1Token,

@@ -5,8 +5,13 @@ pragma solidity ^0.7.6;
 import "../../arbitrum/IOutbox.sol";
 import "../../arbitrum/IBridge.sol";
 
+/**
+ * @title Arbitrum Outbox mock contract
+ * @dev This contract implements (a subset of) Arbitrum's IOutbox interface for testing purposes
+ */
 contract OutboxMock is IOutbox {
 
+    // Context of an L2-to-L1 function call
     struct L2ToL1Context {
         uint128 l2Block;
         uint128 l1Block;
@@ -15,43 +20,75 @@ contract OutboxMock is IOutbox {
         bytes32 outputId;
         address sender;
     }
+    // Context of the current L2-to-L1 function call (set and cleared in each transaction)
     L2ToL1Context internal context;
 
+    // Address of the (mock) Arbitrum Bridge
     IBridge public bridge;
 
+    /**
+     * @dev Set the address of the (mock) bridge
+     * @param _bridge Address of the bridge
+     */
     function setBridge(address _bridge) external {
         bridge = IBridge(_bridge);
     }
 
+    /**
+     * @dev Getter for the L2 sender of the current incoming message
+     */
     function l2ToL1Sender() external view override returns (address) {
         return context.sender;
     }
 
+    /**
+     * @dev Getter for the L2 block of the current incoming message
+     */
     function l2ToL1Block() external view override returns (uint256) {
         return context.l2Block;
     }
 
+    /**
+     * @dev Getter for the L1 block of the current incoming message
+     */
     function l2ToL1EthBlock() external view override returns (uint256) {
         return context.l1Block;
     }
 
+    /**
+     * @dev Getter for the L1 timestamp of the current incoming message
+     */
     function l2ToL1Timestamp() external view override returns (uint256) {
         return context.timestamp;
     }
+
+    /**
+     * @dev Getter for the L2 batch number of the current incoming message
+     */
     function l2ToL1BatchNum() external view override returns (uint256) {
         return context.batchNum;
     }
 
+    /**
+     * @dev Getter for the output ID of the current incoming message
+     */
     function l2ToL1OutputId() external view override returns (bytes32) {
         return context.outputId;
     }
 
+    /**
+     * @dev Unimplemented in this mock
+     */
     function processOutgoingMessages(bytes calldata, uint256[] calldata)
         external override pure
     {
         revert("Unimplemented");
     }
 
+    /**
+     * @dev Check whether an outbox entry for a message exists.
+     * This mock returns always true.
+     */
     function outboxEntryExists(uint256) external override pure returns (bool) {
         return true;
     }
@@ -96,6 +133,12 @@ contract OutboxMock is IOutbox {
         executeBridgeCall(destAddr, amount, calldataForL1);
     }
 
+    /**
+     * @dev Execute an L2-to-L1 function call by calling the bridge
+     * @param destAddr Address of the contract to call
+     * @param amount Callvalue for the function call
+     * @param data Calldata for the function call
+     */
     function executeBridgeCall(
         address destAddr,
         uint256 amount,

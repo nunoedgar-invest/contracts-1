@@ -118,7 +118,7 @@ contract L2GraphTokenGateway is GraphTokenGateway, L2ArbitrumMessenger {
      * @dev no additional callhook data is allowed. The two unused params are needed
      * for compatibility with Arbitrum's gateway router.
      * The function is payable for ITokenGateway compatibility, but msg.value must be zero.
-     * @param _l1Token L1 Address of GRT
+     * @param _l1Token L1 Address of GRT (needed for compatibility with Arbitrum Gateway Router)
      * @param _to Recipient address on L1
      * @param _amount Amount of tokens to burn
      * @param _data Contains sender and additional data (always zero) to send to L1
@@ -162,7 +162,7 @@ contract L2GraphTokenGateway is GraphTokenGateway, L2ArbitrumMessenger {
      * The tokens will be received on L1 only after the wait period (7 days) is over,
      * and will require an Outbox.executeTransaction to finalize.
      * @dev no additional callhook data is allowed
-     * @param _l1Token L1 Address of LPT
+     * @param _l1Token L1 Address of GRT (needed for compatibility with Arbitrum Gateway Router)
      * @param _to Recipient address on L1
      * @param _amount Amount of tokens to burn
      * @param _data Contains sender and additional data to send to L1

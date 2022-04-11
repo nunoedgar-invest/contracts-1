@@ -115,7 +115,7 @@ contract L1GraphTokenGateway is GraphTokenGateway, L1ArbitrumMessenger {
      * The tokens are escrowed by the gateway until they are withdrawn back to L1.
      * The ticket must be redeemed on L2 to receive tokens at the specified address.
      * @dev maxGas and gasPriceBid must be set using Arbitrum's NodeInterface.estimateRetryableTicket method.
-     * @param _l1Token L1 Address of the GRT contract
+     * @param _l1Token L1 Address of the GRT contract (needed for compatibility with Arbitrum Gateway Router)
      * @param _to Recipient address on L2
      * @param _amount Amount of tokens to tranfer
      * @param _maxGas Gas limit for L2 execution of the ticket
@@ -186,7 +186,7 @@ contract L1GraphTokenGateway is GraphTokenGateway, L1ArbitrumMessenger {
      * @notice Receives withdrawn tokens from L2
      * The equivalent tokens are released from escrow and sent to the destination.
      * @dev can only accept transactions coming from the L2 GRT Gateway
-     * @param _l1Token L1 Address of the GRT contract
+     * @param _l1Token L1 Address of the GRT contract (needed for compatibility with Arbitrum Gateway Router)
      * @param _from Address of the sender
      * @param _to Recepient address on L1
      * @param _amount Amount of tokens transferred

@@ -37,10 +37,9 @@ abstract contract GraphTokenGateway is GraphUpgradeable, Pausable, Managed, ITok
 
     /**
      * @dev Override the default pausing from Managed to allow pausing this
-     * particular contract besides pausing from the Controller.
+     * particular contract instead of pausing from the Controller.
      */
     function _notPaused() internal override view {
-        require(!controller.paused(), "Paused (controller)");
         require(!_paused, "Paused (contract)");
     }
 

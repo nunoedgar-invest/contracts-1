@@ -78,7 +78,6 @@ contract L1GraphTokenGateway is GraphTokenGateway, L1ArbitrumMessenger {
      */
     function initialize(address _controller) external onlyImpl {
         Managed._initialize(_controller);
-        __ReentrancyGuard_init();
         _paused = true;
     }
 
@@ -131,7 +130,7 @@ contract L1GraphTokenGateway is GraphTokenGateway, L1ArbitrumMessenger {
         uint256 _maxGas,
         uint256 _gasPriceBid,
         bytes calldata _data
-    ) external override payable notPaused nonReentrant returns (bytes memory) {
+    ) external override payable notPaused returns (bytes memory) {
         IGraphToken token = graphToken();
         require(_l1Token == address(token), "TOKEN_NOT_GRT");
         require(_amount > 0, "INVALID_ZERO_AMOUNT");
@@ -199,7 +198,7 @@ contract L1GraphTokenGateway is GraphTokenGateway, L1ArbitrumMessenger {
         address _to,
         uint256 _amount,
         bytes calldata _data
-    ) external override payable notPaused nonReentrant onlyL2Counterpart {
+    ) external override payable notPaused onlyL2Counterpart {
         IGraphToken token = graphToken();
         require(_l1Token == address(token), "TOKEN_NOT_GRT");
         (uint256 exitNum, ) = abi.decode(_data, (uint256, bytes));
